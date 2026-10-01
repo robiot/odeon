@@ -2,9 +2,9 @@
 
 A Pokédex for the real world. Open the app and you're straight in the camera. Snap anything (a building, a plant, an animal, a gadget) and Odeon plays a scan animation while Claude identifies it. You then get a short, interactive entry next to your photo:
 
-- **Hero**: your photo with parallax, an emoji badge, name, category and a one-line tagline
-- **At a glance**: 4–6 tappable fact tiles (e.g. *Built: 447 BC*, *Height: 13.7 m*)
-- **Stats**: Pokédex-style animated bars (Fame, Rarity, Age…)
+- **Hero**: your photo with parallax, category, name, a one-line tagline and the match confidence
+- **At a glance**: 4-6 tappable fact tiles with icons (e.g. *Built: 447 BC*, *Height: 13.7 m*)
+- **Stats**: Pokédex-style tick meters (Fame, Rarity, Age…)
 - **Did you know?**: swipeable fun-fact cards
 - **Timeline**: key moments, when the thing has a history
 - **Quick quiz**: one tap-to-answer question with haptics
@@ -35,10 +35,16 @@ Open it with **Expo Go** on your phone (scan the QR code). The camera doesn't wo
 | File | |
 |---|---|
 | `App.tsx` | State machine: camera → scanning → result |
-| `src/screens/CameraScreen.tsx` | Full-screen camera with a Pokéball shutter |
+| `src/screens/CameraScreen.tsx` | Full-screen camera with a ring shutter |
 | `src/screens/ScanningScreen.tsx` | Scan animation (laser sweep, spinning reticle, blinking feature points, progress, status text) |
 | `src/screens/ResultScreen.tsx` | The interactive entry page |
 | `src/claude.ts` | Calls `claude-opus-5-5` with the photo and parses the structured output |
 | `src/prepareImage.ts` | Shrinks the photo to 1024px so the upload is fast |
+| `src/theme.ts` | Colors, fonts, radii, easing |
+| `src/icons.ts` | The Phosphor icons the app uses, loaded one file at a time |
+
+## Design
+
+Plain black background, one gray family, and one accent color (`#C8E66E`). Type is Geist, with Geist Mono for numbers. Icons come from Phosphor, with no emojis. Shapes follow one rule: containers are 20px, inner elements 12px, and anything you can press is a pill. The visual pass followed the [taste-skill](https://github.com/Leonxlnx/taste-skill) guidelines, which are installed in `.agents/skills`.
 
 The app uses low effort for fast scans and turns on server-side refusal fallbacks (`fallbacks: "default"`).

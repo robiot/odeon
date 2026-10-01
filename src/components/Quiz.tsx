@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { CheckIcon, XIcon } from '../icons';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import type { Entry } from '../schema';
-import { colors, withAlpha } from '../theme';
+import { colors, fonts, radius, easeOut } from '../theme';
 
-export default function Quiz({ quiz, accent }: { quiz: Entry['quiz']; accent: string }) {
+export default function Quiz({ quiz }: { quiz: Entry['quiz'] }) {
   const [picked, setPicked] = useState<number | null>(null);
   const shake = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
@@ -19,42 +20,49 @@ export default function Quiz({ quiz, accent }: { quiz: Entry['quiz']; accent: st
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      shake.value = withSequence(
-        withTiming(-10, { duration: 50 }),
-        withTiming(10, { duration: 60 }),
-        withTiming(-6, { duration: 60 }),
+      shake.set(withSequence(
+        withTiming(-8, { duration: 50 }),
+        withTiming(8, { duration: 60 }),
+        withTiming(-4, { duration: 60 }),
         withTiming(0, { duration: 50 }),
-      );
+      ));
     }
   };
 
   return (
-    <Animated.View style={[styles.card, { borderColor: withAlpha(accent, 0.35) }, shakeStyle]}>
+    <Animated.View style={[styles.card, shakeStyle]}>
       <Text style={styles.q}>{quiz.question}</Text>
       <View style={styles.options}>
         {quiz.options.map((o, i) => {
           const isAnswer = i === quiz.answerIndex;
-          const bg = !answered
-            ? '#1E2330'
-            : isAnswer
-              ? withAlpha(colors.good, 0.22)
-              : i === picked
-                ? withAlpha(colors.bad, 0.22)
-                : '#1A1E29';
-          const border = !answered ? 'transparent' : isAnswer ? colors.good : i === picked ? colors.bad : 'transparent';
+          const isWrongPick = answered && !isAnswer && i === picked;
+          const showRight = answered && isAnswer;
+          const dimmed = answered && !isAnswer && i !== picked;
           return (
-            <Pressable key={i} onPress={() => choose(i)} style={[styles.opt, { backgroundColor: bg, borderColor: border }]}>
-              <Text style={[styles.optLetter, { color: accent }]}>{String.fromCharCode(65 + i)}</Text>
-              <Text style={[styles.optText, answered && !isAnswer && i !== picked && { opacity: 0.45 }]}>{o}</Text>
-              {answered && isAnswer && <Text style={styles.mark}>✓</Text>}
-              {answered && !isAnswer && i === picked && <Text style={styles.mark}>✗</Text>}
+            <Pressable
+              key={i}
+              onPress={() => choose(i)}
+              disabled={answered}
+              style={({ pressed }) => [
+                styles.opt,
+                showRight && styles.optRight,
+                isWrongPick && styles.optWrong,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.optKey, dimmed && styles.dim]}>{String.fromCharCode(65 + i)}</Text>
+              <Text style={[styles.optText, dimmed && styles.dim]}>{o}</Text>
+              {showRight && <CheckIcon size={18} color={colors.good} weight="bold" />}
+              {isWrongPick && <XIcon size={18} color={colors.bad} weight="bold" />}
             </Pressable>
           );
         })}
       </View>
       {answered && (
-        <Animated.View entering={FadeInDown.springify()} style={styles.result}>
-          <Text style={styles.resultTitle}>{correct ? '🎉 Nailed it!' : '😅 Not quite!'}</Text>
+        <Animated.View entering={FadeInDown.duration(500).easing(easeOut)} style={styles.result}>
+          <Text style={[styles.resultTitle, { color: correct ? colors.good : colors.text }]}>
+            {correct ? 'Correct.' : 'Not quite.'}
+          </Text>
           <Text style={styles.resultBody}>{quiz.explanation}</Text>
         </Animated.View>
       )}
@@ -63,14 +71,31 @@ export default function Quiz({ quiz, accent }: { quiz: Entry['quiz']; accent: st
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 22, padding: 18, borderWidth: 1 },
-  q: { color: colors.text, fontSize: 19, fontWeight: '800', lineHeight: 25 },
-  options: { marginTop: 14, gap: 10 },
-  opt: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 14, borderWidth: 1.5 },
-  optLetter: { fontWeight: '900', fontSize: 15, width: 24 },
-  optText: { color: colors.text, fontSize: 16, fontWeight: '600', flex: 1 },
-  mark: { color: colors.text, fontSize: 18, fontWeight: '900' },
-  result: { marginTop: 14 },
-  resultTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  resultBody: { color: colors.muted, fontSize: 15, marginTop: 4, lineHeight: 21 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.container,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 18,
+  },
+  q: { color: colors.text, fontFamily: fonts.semibold, fontSize: 19, lineHeight: 25, letterSpacing: -0.4 },
+  options: { marginTop: 16, gap: 8 },
+  opt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    paddingVertical: 15,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: colors.hairlineStrong,
+  },
+  optRight: { borderColor: colors.good, backgroundColor: 'rgba(134,207,156,0.08)' },
+  optWrong: { borderColor: colors.bad, backgroundColor: 'rgba(227,130,111,0.08)' },
+  pressed: { transform: [{ scale: 0.98 }] },
+  optKey: { color: colors.faint, fontFamily: fonts.mono, fontSize: 13, width: 24 },
+  optText: { color: colors.text, fontFamily: fonts.medium, fontSize: 16, flex: 1 },
+  dim: { opacity: 0.35 },
+  result: { marginTop: 16, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairlineStrong },
+  resultTitle: { fontFamily: fonts.semibold, fontSize: 16 },
+  resultBody: { color: colors.muted, fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, marginTop: 4 },
 });

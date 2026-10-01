@@ -1,47 +1,65 @@
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import type { Entry } from '../schema';
-import { colors, withAlpha } from '../theme';
+import { colors, fonts, easeOut } from '../theme';
 
 type Stat = Entry['stats'][number];
 
-export default function StatBars({ stats, accent }: { stats: Stat[]; accent: string }) {
+const SEGMENTS = 28;
+
+export default function StatBars({ stats }: { stats: Stat[] }) {
   return (
-    <View style={styles.card}>
+    <View style={styles.list}>
       {stats.map((s, i) => (
-        <StatRow key={i} stat={s} accent={accent} delay={500 + i * 150} />
+        <StatRow key={i} stat={s} delay={600 + i * 140} last={i === stats.length - 1} />
       ))}
     </View>
   );
 }
 
-function StatRow({ stat, accent, delay }: { stat: Stat; accent: string; delay: number }) {
+/** A row of ticks that light up left to right, instead of a filled progress track. */
+function StatRow({ stat, delay, last }: { stat: Stat; delay: number; last: boolean }) {
   const value = Math.max(0, Math.min(100, Math.round(stat.value)));
-  const w = useSharedValue(0);
-  useEffect(() => {
-    w.value = withDelay(delay, withTiming(value, { duration: 900, easing: Easing.out(Easing.cubic) }));
-  }, [w, value, delay]);
-  const fill = useAnimatedStyle(() => ({ width: `${w.value}%` }));
-
+  const lit = Math.round((value / 100) * SEGMENTS);
   return (
-    <View style={styles.row}>
-      <Text style={styles.label} numberOfLines={1}>
-        {stat.label}
-      </Text>
-      <View style={[styles.track, { backgroundColor: withAlpha(accent, 0.15) }]}>
-        <Animated.View style={[styles.fill, { backgroundColor: accent }, fill]} />
+    <View style={[styles.row, !last && styles.divider]}>
+      <View style={styles.head}>
+        <Text style={styles.label} numberOfLines={1}>
+          {stat.label}
+        </Text>
+        <Text style={styles.value}>{value}</Text>
       </View>
-      <Text style={styles.value}>{value}</Text>
+      <View style={styles.ticks}>
+        {Array.from({ length: SEGMENTS }, (_, i) => (
+          <Tick key={i} on={i < lit} delay={delay + i * 20} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function Tick({ on, delay }: { on: boolean; delay: number }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    if (on) v.set(withDelay(delay, withTiming(1, { duration: 320, easing: easeOut })));
+  }, [on, delay, v]);
+  const style = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ scaleY: 0.4 + v.value * 0.6 }] }));
+  return (
+    <View style={styles.tickSlot}>
+      <Animated.View style={[styles.tickOn, style]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 22, padding: 18, gap: 14, borderWidth: 1, borderColor: colors.cardBorder },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  label: { color: colors.text, fontSize: 14, fontWeight: '700', width: 78 },
-  track: { flex: 1, height: 12, borderRadius: 6, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 6 },
-  value: { color: colors.muted, fontSize: 14, fontWeight: '800', width: 36, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  list: {},
+  row: { paddingVertical: 14 },
+  divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.hairlineStrong },
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
+  label: { color: colors.text, fontFamily: fonts.medium, fontSize: 15 },
+  value: { color: colors.muted, fontFamily: fonts.mono, fontSize: 14, fontVariant: ['tabular-nums'] },
+  ticks: { flexDirection: 'row', gap: 2, height: 8 },
+  tickSlot: { flex: 1, borderRadius: 1, backgroundColor: colors.surfaceRaised, overflow: 'hidden' },
+  tickOn: { flex: 1, backgroundColor: colors.accent },
 });

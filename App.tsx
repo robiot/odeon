@@ -2,6 +2,14 @@ import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+} from '@expo-google-fonts/geist';
+import { GeistMono_500Medium } from '@expo-google-fonts/geist-mono';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import CameraScreen from './src/screens/CameraScreen';
 import ScanningScreen from './src/screens/ScanningScreen';
@@ -17,6 +25,13 @@ type State =
   | { phase: 'result'; uri: string; entry: Entry };
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
+    GeistMono_500Medium,
+  });
   const [state, setState] = useState<State>({ phase: 'camera' });
   // Bumped on every new scan so a stale response can't overwrite a newer one.
   const scanId = useRef(0);
@@ -42,6 +57,8 @@ export default function App() {
   const showResult = useCallback(() => {
     setState((s) => (s.phase === 'scanning' && s.entry ? { phase: 'result', uri: s.uri, entry: s.entry } : s));
   }, []);
+
+  if (!fontsLoaded) return <View style={styles.root} />;
 
   return (
     <SafeAreaProvider>

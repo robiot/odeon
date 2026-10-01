@@ -21,7 +21,8 @@ Rules:
 - If it's an everyday generic object (a mug, a chair), make the entry about that kind of object - its history and surprising facts.
 - Write for someone glancing at a phone: tiny, punchy, concrete. Numbers over adjectives. No long sentences, no filler.
 - Pick quick facts that matter most for this kind of thing (a building: year built, architect, height, style; an animal: lifespan, diet, top speed, habitat).
-- Facts must be true. Prefer well-established facts over obscure claims.`;
+- Facts must be true. Prefer well-established facts over obscure claims.
+- Plain text only: no emojis, no em dashes or en dashes (use a hyphen for ranges like "447-432 BC"), no exclamation marks.`;
 
 export async function analyzeImage(base64Jpeg: string): Promise<Entry> {
   const response = await client.beta.messages.parse({

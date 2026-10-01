@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import { Dimensions, FlatList, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, withAlpha } from '../theme';
+import { LightbulbIcon } from '../icons';
+import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { colors, fonts, radius, easeOut } from '../theme';
 
-const CARD_W = Dimensions.get('window').width - 40;
-const GAP = 12;
+const CARD_W = Dimensions.get('window').width - 56;
+const GAP = 10;
 
-export default function FunFacts({ facts, accent }: { facts: string[]; accent: string }) {
+export default function FunFacts({ facts }: { facts: string[] }) {
   const [page, setPage] = useState(0);
 
   return (
     <View>
+      <View style={styles.segments}>
+        {facts.map((_, i) => (
+          <Segment key={i} active={i === page} />
+        ))}
+      </View>
       <FlatList
         data={facts}
         horizontal
@@ -26,41 +32,36 @@ export default function FunFacts({ facts, accent }: { facts: string[]; accent: s
           if (p !== page) Haptics.selectionAsync();
           setPage(p);
         }}
-        renderItem={({ item, index }) => (
-          <LinearGradient
-            colors={[withAlpha(accent, 0.35), withAlpha(accent, 0.08)]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.card, { borderColor: withAlpha(accent, 0.4) }]}
-          >
-            <View style={styles.head}>
-              <Text style={styles.bulb}>💡</Text>
-              <Text style={[styles.num, { color: accent }]}>
-                {index + 1}/{facts.length}
-              </Text>
-            </View>
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <LightbulbIcon size={22} color={colors.accent} weight="regular" />
             <Text style={styles.text}>{item}</Text>
-          </LinearGradient>
+          </View>
         )}
       />
-      <View style={styles.dots}>
-        {facts.map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === page && { backgroundColor: accent, width: 22 }]}
-          />
-        ))}
-      </View>
     </View>
   );
 }
 
+function Segment({ active }: { active: boolean }) {
+  const style = useAnimatedStyle(() => ({
+    opacity: withTiming(active ? 1 : 0.18, { duration: 300, easing: easeOut }),
+  }));
+  return <Animated.View style={[styles.segment, style]} />;
+}
+
 const styles = StyleSheet.create({
-  card: { width: CARD_W, minHeight: 150, borderRadius: 24, padding: 20, borderWidth: 1 },
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  bulb: { fontSize: 28 },
-  num: { fontSize: 13, fontWeight: '900', letterSpacing: 1 },
-  text: { color: colors.text, fontSize: 20, fontWeight: '700', lineHeight: 27 },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 14 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.cardBorder },
+  segments: { flexDirection: 'row', gap: 4, marginBottom: 12 },
+  segment: { flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.text },
+  card: {
+    width: CARD_W,
+    minHeight: 168,
+    borderRadius: radius.container,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surface,
+    padding: 20,
+    justifyContent: 'space-between',
+  },
+  text: { color: colors.text, fontFamily: fonts.medium, fontSize: 20, lineHeight: 27, letterSpacing: -0.3, marginTop: 20 },
 });

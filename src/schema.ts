@@ -1,17 +1,16 @@
 import * as z from 'zod/v4';
+import { FACT_ICON_NAMES } from './icons';
 
 export const EntrySchema = z.object({
   name: z.string().describe('Specific name of the thing, e.g. "Parthenon" or "Monstera Deliciosa". Max 4 words.'),
   category: z.string().describe('Short type label, e.g. "Ancient Temple", "Houseplant". Max 3 words.'),
-  emoji: z.string().describe('One single emoji that represents it.'),
-  accentColor: z.string().describe('A vivid hex color (#RRGGBB) that fits the subject, readable on a dark background.'),
   tagline: z.string().describe('Punchy one-liner, max 8 words.'),
   summary: z.string().describe('What it is in plain words a 12 year old gets. Max 2 short sentences, max 30 words.'),
   confidence: z.number().describe('0-100, how sure you are about the identification.'),
   quickFacts: z
     .array(
       z.object({
-        emoji: z.string().describe('One emoji for this fact.'),
+        icon: z.enum(FACT_ICON_NAMES).describe('The icon that best fits this fact.'),
         label: z.string().describe('1-3 words, e.g. "Built", "Height", "Lifespan".'),
         value: z.string().describe('Very short value, max 4 words, e.g. "447 BC", "13.7 m".'),
       }),

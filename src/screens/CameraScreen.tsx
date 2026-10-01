@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CameraRotateIcon, ApertureIcon } from '../icons';
 import Animated, {
+  FadeIn,
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
-  Easing,
-  FadeIn,
 } from 'react-native-reanimated';
-import { colors } from '../theme';
+import { colors, fonts, radius, easeOut } from '../theme';
 
 type Props = { onCapture: (uri: string) => void };
 
@@ -26,31 +27,31 @@ export default function CameraScreen({ onCapture }: Props) {
   const insets = useSafeAreaInsets();
 
   const press = useSharedValue(1);
-  const pulse = useSharedValue(0);
   const flash = useSharedValue(0);
-
-  useEffect(() => {
-    pulse.value = withRepeat(withTiming(1, { duration: 1800, easing: Easing.out(Easing.quad) }), -1, false);
-  }, [pulse]);
+  const flipTurn = useSharedValue(0);
 
   const shutterStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
-  const ringStyle = useAnimatedStyle(() => ({
-    opacity: 0.6 * (1 - pulse.value),
-    transform: [{ scale: 1 + pulse.value * 0.45 }],
-  }));
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.value }));
+  const flipStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${flipTurn.value * 180}deg` }] }));
 
   if (!permission) return <View style={styles.fill} />;
 
   if (!permission.granted) {
     return (
-      <View style={[styles.fill, styles.center, { padding: 32 }]}>
-        <Text style={styles.bigEmoji}>📸</Text>
-        <Text style={styles.permTitle}>Let Odeon see</Text>
-        <Text style={styles.permBody}>Point your camera at anything and get its story in seconds.</Text>
-        <Pressable style={styles.permButton} onPress={requestPermission}>
-          <Text style={styles.permButtonText}>Enable camera</Text>
-        </Pressable>
+      <View style={[styles.fill, styles.permWrap, { paddingBottom: insets.bottom + 32 }]}>
+        <Animated.View entering={FadeInDown.duration(700).easing(easeOut)}>
+          <ApertureIcon size={40} color={colors.text} weight="light" />
+          <Text style={styles.permTitle}>Point at anything.{'\n'}Get its story.</Text>
+          <Text style={styles.permBody}>Odeon needs your camera to see what you’re looking at.</Text>
+        </Animated.View>
+        <Animated.View entering={FadeInDown.delay(150).duration(700).easing(easeOut)}>
+          <Pressable
+            style={({ pressed }) => [styles.permButton, pressed && styles.pressed]}
+            onPress={requestPermission}
+          >
+            <Text style={styles.permButtonText}>Allow camera</Text>
+          </Pressable>
+        </Animated.View>
       </View>
     );
   }
@@ -59,8 +60,8 @@ export default function CameraScreen({ onCapture }: Props) {
     if (!cameraRef.current || !ready || busy) return;
     setBusy(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    press.value = withSequence(withTiming(0.82, { duration: 90 }), withSpring(1, { damping: 8 }));
-    flash.value = withSequence(withTiming(0.9, { duration: 60 }), withTiming(0, { duration: 350 }));
+    press.set(withSequence(withTiming(0.88, { duration: 90 }), withSpring(1, { damping: 12, stiffness: 220 })));
+    flash.set(withSequence(withTiming(0.85, { duration: 60 }), withTiming(0, { duration: 380 })));
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, shutterSound: false });
       if (photo?.uri) onCapture(photo.uri);
@@ -69,16 +70,17 @@ export default function CameraScreen({ onCapture }: Props) {
     }
   };
 
+  const flip = () => {
+    Haptics.selectionAsync();
+    flipTurn.set(withSpring(flipTurn.value + 1, { damping: 14 }));
+    setFacing((f) => (f === 'back' ? 'front' : 'back'));
+  };
+
   return (
     <View style={styles.fill}>
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing={facing}
-        onCameraReady={() => setReady(true)}
-      />
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} onCameraReady={() => setReady(true)} />
 
-      {/* Viewfinder brackets */}
+      {/* Viewfinder corners */}
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.center]}>
         <View style={styles.finder}>
           <View style={[styles.corner, styles.tl]} />
@@ -88,42 +90,27 @@ export default function CameraScreen({ onCapture }: Props) {
         </View>
       </View>
 
-      {/* Top bar */}
-      <Animated.View entering={FadeIn.duration(600)} style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.brand}>
-          <View style={styles.led} />
-          <Text style={styles.brandText}>ODEON</Text>
-        </View>
-        <Text style={styles.hint}>Point at anything</Text>
+      <Animated.View entering={FadeIn.duration(800)} style={[styles.topBar, { paddingTop: insets.top + 14 }]}>
+        <Text style={styles.wordmark}>Odeon</Text>
       </Animated.View>
 
-      {/* Bottom controls */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
-        <View style={styles.sideSlot} />
-        <Pressable onPress={capture} hitSlop={20} accessibilityLabel="Scan">
-          <View style={styles.center}>
-            <Animated.View style={[styles.pulseRing, ringStyle]} />
-            <Animated.View style={[styles.ball, shutterStyle]}>
-              <View style={styles.ballTop} />
-              <View style={styles.ballBand} />
-              <View style={styles.ballButtonOuter}>
-                <View style={styles.ballButtonInner} />
-              </View>
+        <Text style={styles.hint}>Tap to identify</Text>
+        <View style={styles.controls}>
+          <View style={styles.side} />
+          <Pressable onPress={capture} hitSlop={16} accessibilityRole="button" accessibilityLabel="Identify">
+            <Animated.View style={[styles.shutterRing, shutterStyle]}>
+              <View style={styles.shutterCore} />
             </Animated.View>
-          </View>
-        </Pressable>
-        <Pressable
-          style={styles.sideSlot}
-          onPress={() => {
-            Haptics.selectionAsync();
-            setFacing((f) => (f === 'back' ? 'front' : 'back'));
-          }}
-          accessibilityLabel="Flip camera"
-        >
-          <View style={styles.flip}>
-            <Text style={styles.flipText}>⟲</Text>
-          </View>
-        </Pressable>
+          </Pressable>
+          <Pressable onPress={flip} hitSlop={12} accessibilityRole="button" accessibilityLabel="Flip camera" style={styles.side}>
+            <BlurView intensity={40} tint="dark" style={styles.flip}>
+              <Animated.View style={flipStyle}>
+                <CameraRotateIcon size={22} color={colors.text} weight="regular" />
+              </Animated.View>
+            </BlurView>
+          </Pressable>
+        </View>
       </View>
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
@@ -131,92 +118,40 @@ export default function CameraScreen({ onCapture }: Props) {
   );
 }
 
-const BALL = 84;
-const CORNER = 34;
+const SHUTTER = 78;
+const CORNER = 26;
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: '#000' },
+  fill: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center' },
-  bigEmoji: { fontSize: 64, marginBottom: 16 },
-  permTitle: { color: colors.text, fontSize: 28, fontWeight: '800', marginBottom: 8 },
-  permBody: { color: colors.muted, fontSize: 16, textAlign: 'center', marginBottom: 28, lineHeight: 22 },
-  permButton: { backgroundColor: colors.red, paddingHorizontal: 28, paddingVertical: 16, borderRadius: 999 },
-  permButtonText: { color: colors.white, fontSize: 17, fontWeight: '700' },
-  finder: { width: '74%', aspectRatio: 0.85 },
-  corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: 'rgba(255,255,255,0.85)' },
-  tl: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 14 },
-  tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 14 },
-  bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 14 },
-  br: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 14 },
-  topBar: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  led: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.scan,
-    marginRight: 8,
-    shadowColor: colors.scan,
-    shadowOpacity: 1,
-    shadowRadius: 6,
-  },
-  brandText: { color: colors.white, fontWeight: '900', letterSpacing: 4, fontSize: 14 },
-  hint: { color: 'rgba(255,255,255,0.85)', marginTop: 10, fontSize: 14, fontWeight: '600' },
-  bottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  sideSlot: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
-  flip: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flipText: { color: colors.white, fontSize: 24, fontWeight: '700' },
-  pulseRing: {
-    position: 'absolute',
-    width: BALL + 16,
-    height: BALL + 16,
-    borderRadius: (BALL + 16) / 2,
+  pressed: { transform: [{ scale: 0.97 }] },
+  permWrap: { justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: '38%' },
+  permTitle: { color: colors.text, fontFamily: fonts.semibold, fontSize: 34, lineHeight: 38, letterSpacing: -1, marginTop: 24 },
+  permBody: { color: colors.muted, fontFamily: fonts.regular, fontSize: 16, lineHeight: 24, marginTop: 14, maxWidth: 300 },
+  permButton: { backgroundColor: colors.text, paddingVertical: 18, borderRadius: radius.pill, alignItems: 'center' },
+  permButtonText: { color: colors.bg, fontFamily: fonts.semibold, fontSize: 16 },
+  finder: { width: '72%', aspectRatio: 0.82 },
+  corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: 'rgba(255,255,255,0.9)' },
+  tl: { top: 0, left: 0, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderTopLeftRadius: radius.inner },
+  tr: { top: 0, right: 0, borderTopWidth: 1.5, borderRightWidth: 1.5, borderTopRightRadius: radius.inner },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 1.5, borderLeftWidth: 1.5, borderBottomLeftRadius: radius.inner },
+  br: { bottom: 0, right: 0, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderBottomRightRadius: radius.inner },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 24 },
+  wordmark: { color: colors.text, fontFamily: fonts.semibold, fontSize: 20, letterSpacing: -0.6 },
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center' },
+  hint: { color: 'rgba(255,255,255,0.75)', fontFamily: fonts.medium, fontSize: 14, marginBottom: 22 },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch', paddingHorizontal: 36 },
+  side: { width: 48, height: 48 },
+  flip: { width: 48, height: 48, borderRadius: radius.pill, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  shutterRing: {
+    width: SHUTTER,
+    height: SHUTTER,
+    borderRadius: SHUTTER / 2,
     borderWidth: 3,
-    borderColor: colors.white,
-  },
-  ball: {
-    width: BALL,
-    height: BALL,
-    borderRadius: BALL / 2,
-    backgroundColor: colors.white,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#111',
-  },
-  ballTop: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: colors.red },
-  ballBand: { position: 'absolute', left: 0, right: 0, height: 6, backgroundColor: '#111' },
-  ballButtonOuter: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#111',
+    borderColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ballButtonInner: { width: 18, height: 18, borderRadius: 9, backgroundColor: colors.white },
-  flash: { backgroundColor: colors.white },
+  shutterCore: { width: SHUTTER - 16, height: SHUTTER - 16, borderRadius: (SHUTTER - 16) / 2, backgroundColor: colors.text },
+  flash: { backgroundColor: colors.text },
 });

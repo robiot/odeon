@@ -1,23 +1,23 @@
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInLeft } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { Entry } from '../schema';
-import { colors, withAlpha } from '../theme';
+import { colors, fonts, easeOut } from '../theme';
 
-export default function Timeline({ items, accent }: { items: Entry['timeline']; accent: string }) {
+export default function Timeline({ items }: { items: Entry['timeline'] }) {
   return (
-    <View style={styles.card}>
+    <View>
       {items.map((t, i) => {
         const last = i === items.length - 1;
         return (
-          <Animated.View key={i} entering={FadeInLeft.delay(700 + i * 120)} style={styles.row}>
+          <Animated.View key={i} entering={FadeInDown.delay(700 + i * 100).duration(600).easing(easeOut)} style={styles.row}>
+            <Text style={styles.year} numberOfLines={1} adjustsFontSizeToFit>
+              {t.year}
+            </Text>
             <View style={styles.rail}>
-              <View style={[styles.dot, { backgroundColor: accent, shadowColor: accent }]} />
-              {!last && <View style={[styles.line, { backgroundColor: withAlpha(accent, 0.3) }]} />}
+              <View style={[styles.node, last && styles.nodeLast]} />
+              {!last && <View style={styles.line} />}
             </View>
-            <View style={[styles.body, !last && { paddingBottom: 18 }]}>
-              <Text style={[styles.year, { color: accent }]}>{t.year}</Text>
-              <Text style={styles.event}>{t.event}</Text>
-            </View>
+            <Text style={[styles.event, !last && { paddingBottom: 22 }]}>{t.event}</Text>
           </Animated.View>
         );
       })}
@@ -26,12 +26,11 @@ export default function Timeline({ items, accent }: { items: Entry['timeline']; 
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 22, padding: 18, borderWidth: 1, borderColor: colors.cardBorder },
   row: { flexDirection: 'row' },
+  year: { width: 76, color: colors.muted, fontFamily: fonts.mono, fontSize: 13, paddingTop: 2 },
   rail: { width: 22, alignItems: 'center' },
-  dot: { width: 12, height: 12, borderRadius: 6, marginTop: 4, shadowOpacity: 0.9, shadowRadius: 6 },
-  line: { flex: 1, width: 2, marginTop: 4 },
-  body: { flex: 1, paddingLeft: 10 },
-  year: { fontSize: 14, fontWeight: '900', letterSpacing: 0.5 },
-  event: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 2, lineHeight: 21 },
+  node: { width: 9, height: 9, borderRadius: 5, borderWidth: 1.5, borderColor: colors.text, marginTop: 6 },
+  nodeLast: { backgroundColor: colors.accent, borderColor: colors.accent },
+  line: { flex: 1, width: StyleSheet.hairlineWidth, backgroundColor: colors.hairlineStrong, marginTop: 4 },
+  event: { flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, paddingLeft: 10 },
 });
